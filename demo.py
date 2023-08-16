@@ -10,6 +10,8 @@ import cv2
 import os
 import glob
 
+import subprocess
+
 from train.utils import *
 
 class Demo():
@@ -42,15 +44,41 @@ class Demo():
         ap.add_argument("--video", type = str, default = './video', help = "location where text maps and videos are stored")
 
         ap.add_argument("--body_tex", type = str, default = './test_data/images/body_tex/body_tex.jpg')
+        # ap.add_argument("--body_text", type = str, default = './test_data/images/body_tex/body_tex.jpg')
 
         self.opt = ap.parse_args()
         assert (int(self.opt.img_id) < 5 and int(self.opt.img_id) >= 0), 'Please enter an img_id between 0 and 4'
         assert (int(self.opt.pose_id) < 5 and int(self.opt.pose_id) >= 0), 'Please enter a pose_id between 0 and 4'
+
     def get_path(self):
+        # self.opt.low_mesh = './test_data/meshes/pants/lower_0.obj'
+        # self.opt.up_mesh = './test_data/meshes/pants/lower_0.obj'
+        # self.opt.body_mesh = '.test_data/meshes/pants/body_0.obj'
+        # self.opt.body_text = './test_data/images/body_tex/body_tex.jpg'
+
+        # ap.add_argument("--up_mesh", type = str, default = "test_data/meshes/pants/upper_0.obj", help = "location of upper mesh")
+        # ap.add_argument("--up_text", type = str, default = "output/up.jpg",  help = "location of upper texture")
+
+        # ap.add_argument("--low_mesh", type = str, default = "test_data/meshes/pants/lower_0.obj",  help = "location of lower mesh")
+        # ap.add_argument("--low_text", type = str,   help = "location of lower text")
+
+        # ap.add_argument("--body_mesh", type = str, default = "test_data/meshes/pants/body_0.obj",  help = "location of body mesh")
+        # ap.add_argument("--body_text", type = str, default = "test_data/images/body_tex/body_tex.jpg",  help = "location of body texture")
+
+        # ap.add_argument("--scene_width", type = int, default = 175, help = "scene width")
+        # ap.add_argument("--scene_height", type = str, default = 350, help = "scene height")
+
+        # ap.add_argument("--total_frame", type = int, default = 90, help = "Total frames to render")
+        # ap.add_argument("--renderfolder", type = str, default = "output", help = "Location of rendering folder")
+
+        # self.opt.img_up_front = './test_data/images/' + self.opt.low_type + '/shirt{}.jpg'.format(self.opt.img_id)
+        # self.opt.img_up_back = './test_data/images/' + self.opt.low_type + '/shirt{}_b.jpg'.format(self.opt.img_id)
+
+        # self.opt.img_low_front = './test_data/images/' + self.opt.low_type + '/{}{}.jpg'.format(self.opt.low_type, self.opt.img_id)
+        # self.opt.img_low_back = './test_data/images/' + self.opt.low_type + '/{}{}_b.jpg'.format(self.opt.low_type, self.opt.img_id)
         self.opt.low_mesh = './test_data/meshes/'+ self.opt.low_type + '/lower_{}.obj'.format(self.opt.pose_id)
         self.opt.up_mesh = './test_data/meshes/' + self.opt.low_type + '/upper_{}.obj'.format(self.opt.pose_id)
         self.opt.body_mesh = './test_data/meshes/' + self.opt.low_type + '/body_{}.obj'.format(self.opt.pose_id)
-
 
         self.opt.img_up_front = './test_data/images/' + self.opt.low_type + '/shirt{}.jpg'.format(self.opt.img_id)
         self.opt.img_up_back = './test_data/images/' + self.opt.low_type + '/shirt{}_b.jpg'.format(self.opt.img_id)
@@ -113,10 +141,10 @@ class Demo():
         dict = ['up_front', 'up_back', 'low_front', 'low_back']
         for val in dict:
             map_net_pth = getattr(self.opt, 'map_'+ val)
-            self.net_map.load_state_dict(torch.load(map_net_pth))
+            self.net_map.load_state_dict(torch.load(map_net_pth, map_location='cuda:0'))
 
             seg_net_pth = getattr(self.opt, 'seg_'+val)
-            self.net_seg.load_state_dict(torch.load(seg_net_pth))
+            self.net_seg.load_state_dict(torch.load(seg_net_pth, map_location='cuda:0'))
 
             self.net_seg.to(self.device)
             self.net_seg.eval()
@@ -167,16 +195,35 @@ class Demo():
 
         video.release()
 
+
     def run(self):
         self.forward()
         self.combine_textures()
-        os.system('blender --background --python render.py -- --body_tex {} --body_mesh {} --up_tex {} --up_mesh {} --low_mesh {} --low_tex {} --renderfolder {}'.format(
-            self.opt.body_tex, self.opt.body_mesh, self.opt.tex_loc_up, self.opt.up_mesh, self.opt.low_mesh, self.opt.tex_loc_low, self.opt.video
-        ))
+        # print(self.opt.video)
+        # exit()
+        blenderPath = "C:/Program Files/Blender Foundation/Blender 3.4/blender.exe"
+        blendFilePath = "D:/jj/Projects/SportsViolence/pix2surf/pix2surf.blend"
+
+        subprocess.call([blenderPath, 
+                    # '-b',  # 블렌더가 백그라운드로 작동하도록 하는 옵션
+                    blendFilePath,
+                    '-P', 'D:/jj/Projects/SportsViolence/pix2surf/render.py', 
+                    '--up_mesh', self.opt.up_mesh, 
+                    '--up_text', self.opt.tex_loc_up, 
+                    '--low_mesh', self.opt.low_mesh, 
+                    '--low_text', self.opt.tex_loc_low, 
+                    '--body_mesh', self.opt.body_mesh, 
+                    '--body_tex', self.opt.body_tex, 
+                    # '--scene_width', 175,
+                    # '--scene_height', 350,
+                    # '--total_frame', 90,
+                    '--renderfolder', self.opt.video
+                ])
 
         self.make_video()
-        os.system('rm -r {}'.format(self.opt.output))
-        os.system('rm -r {}'.format(self.opt.video))
+
+        # subprocess.call(['del', '/S', '/Q', self.opt.output])
+        # subprocess.call(['del', '/S', '/Q', self.opt.video])
 
 
 if __name__ == '__main__':
