@@ -41,7 +41,7 @@ class Demo():
         ap.add_argument("--low_type", type = str, default = 'shorts', help = 'pants|shorts')
 
         ap.add_argument("--output", type = str, default = './output', help = "Location where renderings are stored")
-        ap.add_argument("--video", type = str, default = './video', help = "location where text maps and videos are stored")
+        ap.add_argument("--video", type = str, default = 'D:/jj\Projects/SportsViolence/pix2surf/video', help = "location where text maps and videos are stored")
 
         ap.add_argument("--body_tex", type = str, default = './test_data/images/body_tex/body_tex.jpg')
         # ap.add_argument("--body_text", type = str, default = './test_data/images/body_tex/body_tex.jpg')
@@ -181,6 +181,7 @@ class Demo():
             setattr(self, 'tex_'+val, base)
 
     def make_video(self):
+        print("[Make Video]")
         paths = sorted(glob.glob(os.path.join(self.opt.video, '*.png')))
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         video_loc =  './video.mp4'
@@ -205,7 +206,7 @@ class Demo():
         blendFilePath = "D:/jj/Projects/SportsViolence/pix2surf/pix2surf.blend"
 
         subprocess.call([blenderPath, 
-                    # '-b',  # 블렌더가 백그라운드로 작동하도록 하는 옵션
+                    '-b',  # 블렌더가 백그라운드로 작동하도록 하는 옵션
                     blendFilePath,
                     '-P', 'D:/jj/Projects/SportsViolence/pix2surf/render.py', 
                     '--up_mesh', self.opt.up_mesh, 
